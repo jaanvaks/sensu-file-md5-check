@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Created by Brian Weber <brian@bdweber.net> Jan 5, 2012
 # check_file_md5s
 # Checks the md5sum of a particular file against one stored in a predetermined list.
