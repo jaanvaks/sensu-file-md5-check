@@ -23,6 +23,7 @@ function assert () {
 }
 
 function cleanup () {
+  echo "Cleaning up testfiles"
   rm -f not_allowed_to_change.file
   rm -f /usr/local/nagios/md5s*
 }
@@ -30,10 +31,9 @@ function cleanup () {
 function test_createMd5sumFile () {
   echo "${FUNCNAME[0]}:"
   echo "this is a file with critical content" > not_allowed_to_change.file
-  $CHECK_FILE_MD5 not_allowed_to_change.file
-
   echo "Creating MD5sum file"
-  assert $? 0
+  $CHECK_FILE_MD5 not_allowed_to_change.file
+  assert $? 1
 }
 
 function test_unchangedFile () {
@@ -55,4 +55,4 @@ test_createMd5sumFile
 test_unchangedFile
 test_changedFile
 
-#cleanup
+cleanup
