@@ -32,22 +32,28 @@ function test_createMd5sumFile () {
   echo "${FUNCNAME[0]}:"
   echo "this is a file with critical content" > not_allowed_to_change.file
   echo "Creating MD5sum file"
-  $CHECK_FILE_MD5 not_allowed_to_change.file
-  assert $? 1
+  $CHECK_FILE_MD5 -c
+  assert $? 2
+  $CHECK_FILE_MD5 --newmd5list not_allowed_to_change.file
+  assert $? 0
 }
 
 function test_unchangedFile () {
   echo "${FUNCNAME[0]}:"
   echo "Validating unchanged file"
-  $CHECK_FILE_MD5 not_allowed_to_change.file
+  echo "this is a file with critical content" > not_allowed_to_change.file
+  $CHECK_FILE_MD5 --newmd5list not_allowed_to_change.file
+  $CHECK_FILE_MD5 --checkmd5s
   assert $? 0
 }
 
 function test_changedFile () {
   echo "${FUNCNAME[0]}:"
+  echo "this is a file with critical content" > not_allowed_to_change.file
+  $CHECK_FILE_MD5 --newmd5list not_allowed_to_change.file
   echo "Changes" >> not_allowed_to_change.file
   echo "Validating changed file"
-  $CHECK_FILE_MD5 not_allowed_to_change.file
+  $CHECK_FILE_MD5 --checkmd5s
   assert $? 2
 }
 
