@@ -7,70 +7,98 @@
 
 # Modeled after / inspired by / replacing check_file_md5s by Stephen Berg, et al.
 
-VERSION=0.1
+PROGNAME=check_file_md5
+VERSION=0.2
 
 MD5=`which md5sum`
 MD5_LIST="/usr/local/nagios/md5s"
+declare -a FAILED_FILES=()
+CHECK_EXITCODE=0
 
 
 function check_file_md5() {
-	if [ -f $ARG ]; then
-		if [ `grep $ARG $MD5_LIST | wc -l` -eq 1 ]; then
-			if [ `grep $ARG $MD5_LIST | cut -d\  -f1` = `$MD5 $ARG | cut -d\  -f1` ]; then
-				echo OK
-				exit 0
-			else
-				echo "WARNING - md5sum does not match! Rebuilding so the next check will match."
-				rebuild_md5_list
-				exit 2
-			fi
-		else
-			echo "WARNING - md5sum is not in list. Adding for you now."
-      mkdir -p $(dirname $MD5_LIST)
-			echo `$MD5 $ARG` >> $MD5_LIST
-			exit 1
-		fi
-	else
-		echo "CRITICAL - file does not exist!"
-		exit 2
-	fi
-}
+  $MD5 --quiet -c $MD5_LIST
+  MD5_CHECK=$?
+  if [[ $MD5_CHECK == 0 ]]; then
+    echo OK
+    exit 0
+  else
+    exit 2
+  fi
+  }
 
 function show_usage() {
-	echo ""
-	echo "    $0 - plugin for checking arbitrary md5sum against a predetermined list."
-	echo "    This list lives at $MD5_LIST"
-	echo "    New files need to be added by doing the following command:"
-	echo "             $MD5 /path/to/file >> $MD5_LIST"
-	echo ""
-	echo "    Usage:   $0 /path/to/file"
-	echo "             $0 --help"
-	echo ""
-	echo "    Version: $VERSION"
-	echo ""
+  echo ""
+  echo "    $0 - plugin for checking arbitrary md5sum against a predetermined list."
+  echo "    This list lives at $MD5_LIST"
+  echo "    New files need to be added by doing the following command:"
+  echo "             $MD5 /path/to/file >> $MD5_LIST"
+  echo ""
+  echo "    Usage:   $0 /path/to/file"
+  echo "             $0 --help"
+  echo ""
+  echo "    Version: $VERSION"
+  echo ""
 }
 
 function rebuild_md5_list() {
-	MD5_DATE=${MD5_LIST}.`date +%Y%m%d`
-	mv $MD5_LIST $MD5_DATE
+  MD5_DATE=${MD5_LIST}.`date +%Y%m%d`
+  mv $MD5_LIST $MD5_DATE
 
-	for FILE in `cat $MD5_DATE | awk '{ print $2 }' | sort | uniq | xargs`; do
-		md5sum ${FILE} >> $MD5_LIST
-	done
+  for FILE in `cat $MD5_DATE | awk '{ print $2 }' | sort | uniq | xargs`; do
+    md5sum ${FILE} >> $MD5_LIST
+  done
+}
+
+function append_md5s_to_list() {
+  echo "Apending file(s) to monitored md5sums"
+  $MD5 $@ >> $MD5_LIST
+  cat $MD5_LIST
+  exit 0
+}
+
+function write_md5_list() {
+  echo "Writing file(s) to monitored md5sums"
+  mkdir -p $(dirname $MD5_LIST)
+  chown -R sensu:sensu $(dirname $MD5_LIST)
+  $MD5 $@ > $MD5_LIST
+  cat $MD5_LIST
+  exit 0
 }
 
 if [ -z "$1" ]; then
-	show_usage
-	exit 2
+  show_usage
+  exit 2
 fi
 
 case $1 in
-	--help)
-		show_usage
-		exit 0
-		;;
-	*)
-		ARG=$1
-		check_file_md5
-		;;
+  -h|--help)
+    show_usage
+    exit 0
+    ;;
+  -v|--version)
+    echo "$VERSION"
+    ;;
+  -r|--rebuild)
+    rebuild_md5_list
+    exit 0
+    ;;
+  -a|--append)
+    shift
+    append_md5s_to_list $@
+    exit 0
+    ;;
+  -n|--newmd5list)
+    shift
+    write_md5_list $@
+    exit 0
+    ;;
+  -c|--checkmd5s)
+    shift
+    check_file_md5
+    ;;
+  *)
+    show_usage
+    exit 2
+    ;;
 esac
